@@ -7,7 +7,10 @@ Eliminated Charges <> 0 filter to count encounters that are no charge 2/21/06
 
 SET NOCOUNT ON;
 
+IF OBJECT_ID('tempdb.dbo.#Summary', 'U') IS NOT NULL
+	DROP TABLE #Summary; 
 
+-- Declare Variables
 DECLARE @StartDate DATETIME
 		, @EndDate DATETIME
 		, @DateType VARCHAR(3)
@@ -15,17 +18,17 @@ DECLARE @StartDate DATETIME
 		, @HCPCType VARCHAR(10)
 		, @ServiceType VARCHAR(15)
 		, @ResourceType VARCHAR(20);
+
+-- Set Variable Values
 SELECT @StartDate = '2017-01-01 00:00:00.000';
 SELECT @EndDate = '2017-03-31 23:59:59.997';
 SELECT @DateType = 'DOS'; -- 'DOE' or 'DOS'
 SELECT @InclResource = 1; -- 1 includes Resource, 2 does not
-SELECT @HCPCType = 'HCPC - M'
-SELECT @ServiceType = 'HCPC - MED' /*'HCPC - DEN'*/ /*'HCPC - BH'*/
 SELECT @ResourceType = 'Doctors' /* 'BHC'*/ /*'Hygienists'*/ /*'Dentists'*/
 
 
 
-
+-- Create #Summary Table to hold all of the information that we will eventually query from to return the final result set
 CREATE TABLE #Summary 
 	(
 	DoctorID int,
@@ -106,14 +109,14 @@ SELECT
 	pv.PatientVisitID,
 	pvp.DateOfServiceFrom,
 	SUBSTRING(CONVERT(VARCHAR, pvp.DateOfServiceFrom, 120), 1, 7),
-	CASE WHEN pos.Code IN ('11','04','50') AND LEFT(q.Description,8) = @HCPCType AND pvp.Units < 0 THEN - 1 
-		WHEN pos.Code IN ('11','04','50') AND LEFT(q.Description,10) = @ServiceType AND pvp.Code NOT IN ('90832UL','96150','96151','96152','90867BH','98966BH') THEN  1 ELSE 0 END,
-	CASE WHEN pos.Code IN ('21','22') AND LEFT(q.Description,8) = @HCPCType AND pvp.Units < 0 THEN - 1 
-		WHEN pos.Code IN ('21','22') AND LEFT(q.Description,10) = @ServiceType AND pvp.Code NOT IN ('90832UL','96150','96151','96152','90867BH','98966BH') THEN 1 ELSE 0 END,
-	CASE WHEN ISNULL(pos.Code,'') NOT IN ('11','04','21','22') AND LEFT(q.Description,8) = @HCPCType AND pvp.Units < 0 THEN -1 
-		WHEN ISNULL(pos.Code,'') NOT IN ('11','04','21','22') AND LEFT(q.Description,10) = @ServiceType AND pvp.Code NOT IN ('90832UL','96150','96151','96152','90867BH','98966BH') THEN 1 ELSE 0 END,
-	CASE WHEN pos.Code = '12' AND LEFT(q.Description,8) = @HCPCType AND pvp.Units < 0 THEN -1 
-		WHEN pos.Code = '12' AND LEFT(q.Description,10) = @ServiceType AND pvp.Code NOT IN ('90832UL','96150','96151','96152','90867BH','98966BH') THEN 1 ELSE 0 END,
+	CASE WHEN pos.Code IN ('11','04','50') AND LEFT(q.Description,8) IN ('HCPC - M', 'HCPC - B','HCPC - D') AND pvp.Units < 0 THEN - 1 
+		WHEN pos.Code IN ('11','04','50') AND LEFT(q.Description,10) IN ('HCPC - MED','HCPC - DEN','HCPC - BH') AND pvp.Code NOT IN ('90832UL','96150','96151','96152','90867BH','98966BH') THEN  1 ELSE 0 END,
+	CASE WHEN pos.Code IN ('21','22') AND LEFT(q.Description,8) IN ('HCPC - M', 'HCPC - B','HCPC - D') AND pvp.Units < 0 THEN - 1 
+		WHEN pos.Code IN ('21','22') AND LEFT(q.Description,10) IN ('HCPC - MED','HCPC - DEN','HCPC - BH') AND pvp.Code NOT IN ('90832UL','96150','96151','96152','90867BH','98966BH') THEN 1 ELSE 0 END,
+	CASE WHEN ISNULL(pos.Code,'') NOT IN ('11','04','21','22') AND LEFT(q.Description,8) IN ('HCPC - M', 'HCPC - B','HCPC - D') AND pvp.Units < 0 THEN -1 
+		WHEN ISNULL(pos.Code,'') NOT IN ('11','04','21','22') AND LEFT(q.Description,10) IN ('HCPC - MED','HCPC - DEN','HCPC - BH') AND pvp.Code NOT IN ('90832UL','96150','96151','96152','90867BH','98966BH') THEN 1 ELSE 0 END,
+	CASE WHEN pos.Code = '12' AND LEFT(q.Description,8) IN ('HCPC - M', 'HCPC - B','HCPC - D') AND pvp.Units < 0 THEN -1 
+		WHEN pos.Code = '12' AND LEFT(q.Description,10) IN ('HCPC - MED','HCPC - DEN','HCPC - BH') AND pvp.Code NOT IN ('90832UL','96150','96151','96152','90867BH','98966BH') THEN 1 ELSE 0 END,
 	ISNULL(pos.Code,'None'),
 	ISNULL(pp.PatientId, 'Unknown'),
 	ISNULL(q.Description, 'None')
@@ -410,75 +413,6 @@ ORDER BY
 	FacilityName,
 	TicketNumber
 END
-/*
-ELSE
 
-BEGIN
-
-SELECT
-	DoctorId, 
-	DoctorName,
-	FacilityId, 
-	FacilityName,
-	CompanyId, 
-	CompanyName,
-	PolicyTypeMId,
-	PolicyType,
-	InsuranceCarriersID,
-	InsuranceCarrier,
-	SUM(InsAllocation) AS InsAllocation,
-	SUM(PatAllocation) AS PatAllocation,
-	SUM(PatBalance) AS PatBalance,
-	SUM(InsBalance) AS InsBalance,
-	SUM(InsPayment) AS InsPayment,
-	SUM(PatPayment) AS PatPayment,
-	SUM(InsAdjustment) AS InsAdjustment,
-	SUM(PatAdjustment) AS PatAdjustment,
-	Flag,
-	TicketNumber,
-                Resource,
-				ResourceType,
-	RevenueCode,
-	ResourceID,
-	CAST(DateofServiceFrom AS DATE) AS DateofService,
-	MonthofService,
-	CASE WHEN SUM(OVEncounter) >= 1 THEN 1 WHEN SUM(OVEncounter) < -1 THEN -1 ELSE SUM(OVEncounter) END AS OVEncounter,
-	CASE WHEN SUM(InPatientEncounter) >= 1 THEN 1 WHEN SUM(InPatientEncounter) < -1 THEN -1 ELSE SUM(InPatientEncounter) END AS InPatientEncounter,
-	CASE WHEN SUM(OtherEncounter) >= 1 THEN 1 WHEN SUM(OtherEncounter) < -1 THEN -1 ELSE SUM(OtherEncounter) END AS OtherEncounter,
-	CASE WHEN SUM(HomeEncounter) >= 1 THEN 1 WHEN SUM(HomeEncounter) < -1 THEN -1 ELSE SUM(HomeEncounter) END AS HomeEncounter
-
-FROM 
-	#Summary
-	
-
-	
-
-GROUP BY 
-	DoctorId, 
-	DoctorName,
-	FacilityId, 
-	FacilityName,
-	CompanyId, 
-	CompanyName,
-	PolicyTypeMId,
-	PolicyType,
-	InsuranceCarriersID,
-	InsuranceCarrier,
-	Flag,
-	TicketNumber,
-               	Resource,
-	RevenueCode,
-	ResourceID,
-	ResourceType,
-	DateofServiceFrom,
-	MonthofService
-
-
-ORDER BY 
-	CompanyName,
-	FacilityName,
-	TicketNumber
-END
-*/
 
 DROP TABLE #Summary
