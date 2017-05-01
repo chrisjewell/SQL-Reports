@@ -7,6 +7,8 @@ Eliminated Charges <> 0 filter to count encounters that are no charge 2/21/06
 
 SET NOCOUNT ON;
 
+IF OBJECT_ID('tempdb.dbo.#Summary', 'U') IS NOT NULL
+	DROP TABLE #Summary; 
 
 DECLARE @StartDate DATETIME
 		, @EndDate DATETIME
@@ -149,8 +151,6 @@ WHERE	/* pvpa.InsAllocation + pvpa.PatAllocation <> 0.00 AND */
 	(NULL IS NOT NULL AND pv.DoctorID IN (NULL)) OR
 	(NULL IS NULL)
 	)
-	AND  --Fliters out unlicensed BHC Visits
-	(p.Code != '90832UL')
 	AND  --Filter on CPTCode
 	(
 	(NULL IS NOT NULL AND pvp.ProceduresID IN (NULL)) OR
@@ -262,8 +262,6 @@ WHERE
 	(NULL IS NOT NULL AND pv.DoctorID IN (NULL)) OR
 	(NULL IS NULL)
 	)
-	AND  --Fliters out unlicensed BHC Visits
-	(p.Code != '90832UL')
 	AND  --Filter on CPTCode
 	(
 	(NULL IS NOT NULL AND pvp.ProceduresID IN (NULL)) OR
@@ -410,75 +408,6 @@ ORDER BY
 	FacilityName,
 	TicketNumber
 END
-/*
-ELSE
 
-BEGIN
-
-SELECT
-	DoctorId, 
-	DoctorName,
-	FacilityId, 
-	FacilityName,
-	CompanyId, 
-	CompanyName,
-	PolicyTypeMId,
-	PolicyType,
-	InsuranceCarriersID,
-	InsuranceCarrier,
-	SUM(InsAllocation) AS InsAllocation,
-	SUM(PatAllocation) AS PatAllocation,
-	SUM(PatBalance) AS PatBalance,
-	SUM(InsBalance) AS InsBalance,
-	SUM(InsPayment) AS InsPayment,
-	SUM(PatPayment) AS PatPayment,
-	SUM(InsAdjustment) AS InsAdjustment,
-	SUM(PatAdjustment) AS PatAdjustment,
-	Flag,
-	TicketNumber,
-                Resource,
-				ResourceType,
-	RevenueCode,
-	ResourceID,
-	CAST(DateofServiceFrom AS DATE) AS DateofService,
-	MonthofService,
-	CASE WHEN SUM(OVEncounter) >= 1 THEN 1 WHEN SUM(OVEncounter) < -1 THEN -1 ELSE SUM(OVEncounter) END AS OVEncounter,
-	CASE WHEN SUM(InPatientEncounter) >= 1 THEN 1 WHEN SUM(InPatientEncounter) < -1 THEN -1 ELSE SUM(InPatientEncounter) END AS InPatientEncounter,
-	CASE WHEN SUM(OtherEncounter) >= 1 THEN 1 WHEN SUM(OtherEncounter) < -1 THEN -1 ELSE SUM(OtherEncounter) END AS OtherEncounter,
-	CASE WHEN SUM(HomeEncounter) >= 1 THEN 1 WHEN SUM(HomeEncounter) < -1 THEN -1 ELSE SUM(HomeEncounter) END AS HomeEncounter
-
-FROM 
-	#Summary
-	
-
-	
-
-GROUP BY 
-	DoctorId, 
-	DoctorName,
-	FacilityId, 
-	FacilityName,
-	CompanyId, 
-	CompanyName,
-	PolicyTypeMId,
-	PolicyType,
-	InsuranceCarriersID,
-	InsuranceCarrier,
-	Flag,
-	TicketNumber,
-               	Resource,
-	RevenueCode,
-	ResourceID,
-	ResourceType,
-	DateofServiceFrom,
-	MonthofService
-
-
-ORDER BY 
-	CompanyName,
-	FacilityName,
-	TicketNumber
-END
-*/
 
 DROP TABLE #Summary
