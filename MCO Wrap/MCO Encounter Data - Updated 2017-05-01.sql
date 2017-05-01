@@ -285,7 +285,7 @@ WHERE
 	(NULL IS NULL)
 	)
 	--AND 
-	--pv.Description NOT LIKE '%*VOID*%'
+	--pv.Description NOT LIKE '%*VOID*%'  -- This code was causing the MASSIVE reduction in HPP Encounters
 	AND --Filter out Test Patients
 		(pp.Last NOT LIKE '%Mouse%' 
 		AND pp.Last NOT LIKE '%Test%'
