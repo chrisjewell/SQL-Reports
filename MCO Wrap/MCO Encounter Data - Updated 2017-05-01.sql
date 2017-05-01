@@ -21,9 +21,9 @@ SELECT @StartDate = '2017-01-01 00:00:00.000';
 SELECT @EndDate = '2017-03-31 23:59:59.997';
 SELECT @DateType = 'DOS'; -- 'DOE' or 'DOS'
 SELECT @InclResource = 1; -- 1 includes Resource, 2 does not
-SELECT @HCPCType = 'HCPC - M'
-SELECT @ServiceType = 'HCPC - MED' /*'HCPC - DEN'*/ /*'HCPC - BH'*/
-SELECT @ResourceType = 'Doctors' /* 'BHC'*/ /*'Hygienists'*/ /*'Dentists'*/
+SELECT @HCPCType = 'HCPC - M';
+SELECT @ServiceType = 'HCPC - MED' ; /*'HCPC - DEN'*/ /*'HCPC - BH'*/
+--SELECT @ResourceType = /*'Doctors'*/ /* 'BHC'*/ /*'Hygienists'*/ /*'Dentists'*/ -- 'Doctors','BHC','Hygienists','Dentists'
 
 
 
@@ -358,7 +358,7 @@ WHERE
 	(NULL IS NULL)
 	)
 	AND
-	rt.Description IN (@ResourceType)
+	rt.Description IN ('Doctors','BHC','Hygienists','Dentists')
 
 	AND
 	#Summary.TicketNumber NOT IN ('000347','000842A','006186','010976',
