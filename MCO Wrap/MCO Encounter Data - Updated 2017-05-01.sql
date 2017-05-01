@@ -22,7 +22,7 @@ SELECT @EndDate = '2017-03-31 23:59:59.997';
 SELECT @DateType = 'DOS'; -- 'DOE' or 'DOS'
 SELECT @InclResource = 1; -- 1 includes Resource, 2 does not
 SELECT @HCPCType = 'HCPC - M';
-SELECT @ServiceType = 'HCPC - MED' ; /*'HCPC - DEN'*/ /*'HCPC - BH'*/
+--SELECT @ServiceType = 'HCPC - MED' ; /*'HCPC - DEN'*/ /*'HCPC - BH'*/
 --SELECT @ResourceType = /*'Doctors'*/ /* 'BHC'*/ /*'Hygienists'*/ /*'Dentists'*/ -- 'Doctors','BHC','Hygienists','Dentists'
 
 
@@ -109,13 +109,13 @@ SELECT
 	pvp.DateOfServiceFrom,
 	SUBSTRING(CONVERT(VARCHAR, pvp.DateOfServiceFrom, 120), 1, 7),
 	CASE WHEN pos.Code IN ('11','04','50') AND LEFT(q.Description,8) = @HCPCType AND pvp.Units < 0 THEN - 1 
-		WHEN pos.Code IN ('11','04','50') AND LEFT(q.Description,10) = @ServiceType AND pvp.Code NOT IN ('90832UL','96150','96151','96152','90867BH','98966BH') THEN  1 ELSE 0 END,
+		WHEN pos.Code IN ('11','04','50') AND LEFT(q.Description,10) IN ('HCPC - MED','HCPC - DEN','HCPC - BH') AND pvp.Code NOT IN ('90832UL','96150','96151','96152','90867BH','98966BH') THEN  1 ELSE 0 END,
 	CASE WHEN pos.Code IN ('21','22') AND LEFT(q.Description,8) = @HCPCType AND pvp.Units < 0 THEN - 1 
-		WHEN pos.Code IN ('21','22') AND LEFT(q.Description,10) = @ServiceType AND pvp.Code NOT IN ('90832UL','96150','96151','96152','90867BH','98966BH') THEN 1 ELSE 0 END,
+		WHEN pos.Code IN ('21','22') AND LEFT(q.Description,10) IN ('HCPC - MED','HCPC - DEN','HCPC - BH') AND pvp.Code NOT IN ('90832UL','96150','96151','96152','90867BH','98966BH') THEN 1 ELSE 0 END,
 	CASE WHEN ISNULL(pos.Code,'') NOT IN ('11','04','21','22') AND LEFT(q.Description,8) = @HCPCType AND pvp.Units < 0 THEN -1 
-		WHEN ISNULL(pos.Code,'') NOT IN ('11','04','21','22') AND LEFT(q.Description,10) = @ServiceType AND pvp.Code NOT IN ('90832UL','96150','96151','96152','90867BH','98966BH') THEN 1 ELSE 0 END,
+		WHEN ISNULL(pos.Code,'') NOT IN ('11','04','21','22') AND LEFT(q.Description,10) IN ('HCPC - MED','HCPC - DEN','HCPC - BH') AND pvp.Code NOT IN ('90832UL','96150','96151','96152','90867BH','98966BH') THEN 1 ELSE 0 END,
 	CASE WHEN pos.Code = '12' AND LEFT(q.Description,8) = @HCPCType AND pvp.Units < 0 THEN -1 
-		WHEN pos.Code = '12' AND LEFT(q.Description,10) = @ServiceType AND pvp.Code NOT IN ('90832UL','96150','96151','96152','90867BH','98966BH') THEN 1 ELSE 0 END,
+		WHEN pos.Code = '12' AND LEFT(q.Description,10) IN ('HCPC - MED','HCPC - DEN','HCPC - BH') AND pvp.Code NOT IN ('90832UL','96150','96151','96152','90867BH','98966BH') THEN 1 ELSE 0 END,
 	ISNULL(pos.Code,'None'),
 	ISNULL(pp.PatientId, 'Unknown'),
 	ISNULL(q.Description, 'None')
