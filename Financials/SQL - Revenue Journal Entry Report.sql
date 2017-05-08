@@ -120,7 +120,7 @@ WITH Resources AS
 	SELECT tmp.PatientVisitId
 		, tmp.PatientVisitProcsId
 		, Payments = SUM((ISNULL(InsurancePayment,0) + ISNULL(PatientPayment,0)))
-		, CollectableAdjustments = SUM((ISNULL(CollectableInsuranceAdjustment,0) + ISNULL(NonCollectablePatientAdjustment,0)))
+		, CollectableAdjustments = SUM((ISNULL(CollectableInsuranceAdjustment,0) + ISNULL(CollectablePatientAdjustment,0)))
 		, NonCollectableAdjustments = SUM((ISNULL(NonCollectableInsuranceAdjustment,0) + ISNULL(NonCollectablePatientAdjustment,0)))
 
 	FROM  (
@@ -244,7 +244,7 @@ WITH Resources AS
 		, tmp.PatientVisitProcsId
 		, pvp.CPTCode	
 	)
-
+	
 
 
 
@@ -257,13 +257,13 @@ SELECT
 	, CAST(pvp.DateOfServiceFrom AS DATE) AS DateOfService
 	, [Month of Service] = SUBSTRING(CONVERT(VARCHAR, pvp.DateOfServiceFrom, 120), 1, 7)
 	, d.ListName AS DoctorName
-	, ISNULL(r.ResourceName,'None') AS Resource
+	, ISNULL(r.ResourceName,'None/Error') AS Resource
 	, r.DotId As ProviderInitials
-	, ISNULL(r.ResourceType,'None') AS ResourceType
+	, ISNULL(r.ResourceType,'None/Error') AS ResourceType
 	, f.ListName AS FacilityName
-	, [Service Type] = (CASE WHEN ISNULL(r.ResourceType,'None') = 'BHC' THEN 'BHC'
-			WHEN ISNULL(r.ResourceType,'None') = 'Doctors' THEN 'Medical'
-			WHEN ISNULL(r.ResourceType,'None') IN ('Dentists', 'Hygienists') THEN 'Dental'
+	, [Service Type] = (CASE WHEN ISNULL(r.ResourceType,'None/Error') = 'BHC' THEN 'BHC'
+			WHEN ISNULL(r.ResourceType,'None/Error') = 'Doctors' THEN 'Medical'
+			WHEN ISNULL(r.ResourceType,'None/Error') IN ('Dentists', 'Hygienists') THEN 'Dental'
 			ELSE 'Other'
 			END)
 	, ISNULL(pt.Description,  'Unknown') AS PolicyType 
@@ -289,18 +289,18 @@ SELECT
 	, CAST(pv.FirstFiledDate AS DATE) AS FirstFiledDate
 	, CAST(pvp.DateOfEntry AS DATE) AS DateofEntry
 --	, [Days to Charge Entry] = ISNULL(CONVERT(VARCHAR(25), DATEDIFF(day, pvp.DateOfServiceFrom, pm.DateOfEntry)), 'Charge Not Retrieved') -- I should build in some logic to check which date is actually NULL
-	, [Days to Claim Submission] = CAST(ISNULL(CONVERT(VARCHAR(25), DATEDIFF(day, pvp.DateOfServiceFrom, pv.FirstFiledDate)), NULL) AS INT) -- Here too
-		, PaymentsToDate = c.Payments
-		, CollectableAdjustmentsToDate = c.CollectableAdjustments
-		, NonCollectableAdjustmentsToDate = c.NonCollectableAdjustments
-		, AdjustmentsDiff = ((pvpa.InsAdjustment + pvpa.PatAdjustment)-(c.CollectableAdjustments + c.NonCollectableAdjustments))
-		, AbsAdjustmentsDiff = ABS((pvpa.InsAdjustment + pvpa.PatAdjustment)-(c.CollectableAdjustments + c.NonCollectableAdjustments))
-		, ReportDate = CURRENT_TIMESTAMP
+--	, [Days to Claim Submission] = CAST(ISNULL(CONVERT(VARCHAR(25), DATEDIFF(day, pvp.DateOfServiceFrom, pv.FirstFiledDate)), NULL) AS INT) -- Here too
+	, PaymentsToDate = c.Payments
+	, CollectableAdjustmentsToDate = ISNULL(c.CollectableAdjustments,0)
+	, NonCollectableAdjustmentsToDate = ISNULL(c.NonCollectableAdjustments,0)
+	, SumAdjToDate = (c.CollectableAdjustments + c.NonCollectableAdjustments)
+	, AdjustmentsDiff = ((pvpa.InsAdjustment + pvpa.PatAdjustment)-(c.CollectableAdjustments + c.NonCollectableAdjustments))
+	, AbsAdjustmentsDiff = ABS((pvpa.InsAdjustment + pvpa.PatAdjustment)-(c.CollectableAdjustments + c.NonCollectableAdjustments))
+	, ReportDate = CURRENT_TIMESTAMP
 	
 FROM PatientVisit pv
 	LEFT JOIN Resources r ON pv.PatientVisitID = r.PatientVisitId
 	LEFT JOIN PatientVisitResource pvr ON r.PatientVisitID = pvr.PatientVisitID
-
 	JOIN PatientVisitProcs pvp ON pv.PatientVisitId = pvp.PatientVisitId
 	JOIN PatientVisitProcsAgg pvpa ON pv.PatientVisitId = pvpa.PatientVisitId AND pvp.PatientVisitProcsId = pvpa.PatientVisitProcsId
 	JOIN DoctorFacility d ON pv.DoctorId = d.DoctorFacilityId
@@ -329,6 +329,15 @@ WHERE /*(c.CollectableAdjustments + c.NonCollectableAdjustments) - (pvpa.InsAdju
 	  ((@DateType = 'DOS') AND(pvp.DateOfServiceFrom  >= ISNULL(@StartDate,'1/1/1900'))
 		AND (pvp.DateOfServiceFrom < dateadd(day, 1, ISNULL(@EndDate,'1/1/3000'))))
 	)
+	--AND
+	--(
+	--(CASE WHEN ISNULL(r.ResourceType,'None') = 'BHC' THEN 'BHC'
+	--	WHEN ISNULL(r.ResourceType,'None') = 'Doctors' THEN 'Medical'
+	--	WHEN ISNULL(r.ResourceType,'None') IN ('Dentists', 'Hygienists') THEN 'Dental'
+	--	ELSE 'Other'
+	--	END) != 'Other'
+	--)
+	--AND pvp.CPTCode LIKE 'PLB'
 	
 ORDER BY pvp.DateOfServiceFrom
 		, pv.PatientVisitId
