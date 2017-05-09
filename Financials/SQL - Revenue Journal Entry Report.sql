@@ -158,7 +158,7 @@ WITH Resources AS
 					, NonCollectableInsuranceAdjustment = SUM(
 						CASE 
 						WHEN t.Action = 'A' AND pm.Source = 2 AND ISNULL(ml.FunctionName,'Y') = 'N'  THEN td.Amount
---						WHEN (t.Action = 'A' AND pm.Source = 2 AND ISNULL(ml.FunctionName,'Y') = 'N' AND temp.Code = 'PLB') THEN  t.Amount -- Makes PLB adjustment amounts NonCollectableInsuranceAdjustments
+						WHEN (t.Action = 'A' AND pm.Source = 2 AND ISNULL(ml.FunctionName,'Y') = 'N' AND temp.Code = 'PLB') THEN  t.Amount -- Makes PLB adjustment amounts NonCollectableInsuranceAdjustments
 						ELSE 0 
 						END)
 					, CollectablePatientAdjustment = SUM(
@@ -177,7 +177,7 @@ WITH Resources AS
 								, pvpa.InsAllocation AS InsuranceCharges
 								, pvpa.PatAllocation AS PatientCharges
 								, pvp.TotalAllowed AS Allowed
---								, pvp.Code AS Code
+								, pvp.Code AS Code
 
 							FROM     PatientVisitProcs AS pvp 
 								JOIN PatientVisitProcsAgg AS pvpa 
@@ -277,7 +277,7 @@ SELECT
 	, [Service Type] = (CASE 
 			WHEN ISNULL(r.ResourceType,'None') = 'BHC' THEN 'BHC'
 			WHEN ISNULL(r.ResourceType,'None') = 'Doctors' THEN 'Medical'
---			WHEN (ISNULL(r.ResourceType,'None') = 'None') AND (d.ListName = 'PLB, Provider') THEN 'Medical'
+			WHEN (ISNULL(r.ResourceType,'None') = 'None') AND (d.ListName = 'PLB, Provider') THEN 'Medical'
 			WHEN ISNULL(r.ResourceType,'None') IN ('Dentists', 'Hygienists') THEN 'Dental'
 			WHEN (ISNULL(r.ResourceType,'None') = 'None' AND ((pvpa.InsAllocation + pvpa.PatAllocation) = 0)) THEN 'Other/Non-Billable'
 			ELSE 'Other/Error'
@@ -325,7 +325,7 @@ FROM PatientVisit pv
 	LEFT JOIN Collections c ON pvp.PatientVisitId = c.PatientVisitId AND pvp.PatientVisitProcsId = c.PatientVisitProcsId
 
 
-WHERE /*(c.CollectableAdjustments + c.NonCollectableAdjustments) - (pvpa.InsAdjustment + pvpa.PatAdjustment) != 0 AND*/
+WHERE 
 	--Filter on facility
 	(
 	(NULL IS NOT NULL AND pv.FacilityID IN (NULL)) OR
@@ -344,15 +344,6 @@ WHERE /*(c.CollectableAdjustments + c.NonCollectableAdjustments) - (pvpa.InsAdju
 	  ((@DateType = 'DOS') AND(pvp.DateOfServiceFrom  >= ISNULL(@StartDate,'1/1/1900'))
 		AND (pvp.DateOfServiceFrom < dateadd(day, 1, ISNULL(@EndDate,'1/1/3000'))))
 	)
-	--AND
-	--(
-	--(CASE WHEN ISNULL(r.ResourceType,'None') = 'BHC' THEN 'BHC'
-	--	WHEN ISNULL(r.ResourceType,'None') = 'Doctors' THEN 'Medical'
-	--	WHEN ISNULL(r.ResourceType,'None') IN ('Dentists', 'Hygienists') THEN 'Dental'
-	--	ELSE 'Other'
-	--	END) != 'Other'
-	--)
-	--AND pvp.CPTCode LIKE 'PLB'
 	
 ORDER BY pvp.DateOfServiceFrom
 		, pv.PatientVisitId
