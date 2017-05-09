@@ -158,7 +158,7 @@ WITH Resources AS
 					, NonCollectableInsuranceAdjustment = SUM(
 						CASE 
 						WHEN t.Action = 'A' AND pm.Source = 2 AND ISNULL(ml.FunctionName,'Y') = 'N'  THEN td.Amount
-						WHEN (t.Action = 'A' AND pm.Source = 2 AND ISNULL(ml.FunctionName,'Y') = 'N' AND temp.Code = 'PLB') THEN  t.Amount -- Makes PLB adjustment amounts NonCollectableInsuranceAdjustments
+--						WHEN (t.Action = 'A' AND pm.Source = 2 AND ISNULL(ml.FunctionName,'Y') = 'N' AND temp.Code = 'PLB') THEN  t.Amount -- Makes PLB adjustment amounts NonCollectableInsuranceAdjustments
 						ELSE 0 
 						END)
 					, CollectablePatientAdjustment = SUM(
@@ -177,7 +177,7 @@ WITH Resources AS
 								, pvpa.InsAllocation AS InsuranceCharges
 								, pvpa.PatAllocation AS PatientCharges
 								, pvp.TotalAllowed AS Allowed
-								, pvp.Code AS Code
+--								, pvp.Code AS Code
 
 							FROM     PatientVisitProcs AS pvp 
 								JOIN PatientVisitProcsAgg AS pvpa 
