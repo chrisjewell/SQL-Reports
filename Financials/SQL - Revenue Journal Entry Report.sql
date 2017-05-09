@@ -120,7 +120,7 @@ WITH Resources AS
 	SELECT tmp.PatientVisitId
 		, tmp.PatientVisitProcsId
 		, Payments = SUM((ISNULL(InsurancePayment,0) + ISNULL(PatientPayment,0)))
-		, CollectableAdjustments = SUM((ISNULL(CollectableInsuranceAdjustment,0) + ISNULL(NonCollectablePatientAdjustment,0)))
+		, CollectableAdjustments = SUM((ISNULL(CollectableInsuranceAdjustment,0) + ISNULL(CollectablePatientAdjustment,0)))
 		, NonCollectableAdjustments = SUM((ISNULL(NonCollectableInsuranceAdjustment,0) + ISNULL(NonCollectablePatientAdjustment,0)))
 
 	FROM  (
@@ -156,7 +156,11 @@ WITH Resources AS
 					, CollectableInsuranceAdjustment = SUM(
 						CASE WHEN t.Action = 'A' AND pm.Source = 2 AND ISNULL(ml.FunctionName,'Y') = 'Y' THEN td.Amount ELSE 0 END)
 					, NonCollectableInsuranceAdjustment = SUM(
-						CASE WHEN t.Action = 'A' AND pm.Source = 2 AND ISNULL(ml.FunctionName,'Y') = 'N'  THEN td.Amount ELSE 0 END)
+						CASE 
+						WHEN t.Action = 'A' AND pm.Source = 2 AND ISNULL(ml.FunctionName,'Y') = 'N'  THEN td.Amount
+--						WHEN (t.Action = 'A' AND pm.Source = 2 AND ISNULL(ml.FunctionName,'Y') = 'N' AND temp.Code = 'PLB') THEN  t.Amount -- Makes PLB adjustment amounts NonCollectableInsuranceAdjustments
+						ELSE 0 
+						END)
 					, CollectablePatientAdjustment = SUM(
 						CASE WHEN t.Action = 'A' AND pm.Source = 1 AND ISNULL(ml.FunctionName,'Y') = 'Y' THEN td.Amount ELSE 0 END)
 					, NonCollectablePatientAdjustment = SUM(
@@ -173,6 +177,7 @@ WITH Resources AS
 								, pvpa.InsAllocation AS InsuranceCharges
 								, pvpa.PatAllocation AS PatientCharges
 								, pvp.TotalAllowed AS Allowed
+--								, pvp.Code AS Code
 
 							FROM     PatientVisitProcs AS pvp 
 								JOIN PatientVisitProcsAgg AS pvpa 
@@ -190,18 +195,18 @@ WITH Resources AS
 								(@DateType = 'DOE' AND pvp.DateOfEntry >= ISNULL(@StartDate,'1/1/1900') AND pvp.DateOfEntry < dateadd(d,1,ISNULL(@EndDate,'1/1/3000')))
 								)) AS temp
 
-						INNER JOIN TransactionDistributions AS td 
-							ON temp.PatientVisitProcsId = td.PatientVisitProcsId
-						INNER JOIN Transactions AS t 
-							ON t.TransactionsId = td.TransactionsId
-						INNER JOIN VisitTransactions AS vt 
-							ON t.VisitTransactionsId = vt.VisitTransactionsId
-						INNER JOIN PaymentMethod AS pm 
-							ON vt.PaymentMethodId = pm.PaymentMethodId
-						INNER JOIN Batch AS b 
-							ON b.BatchId = temp.BatchId
-						LEFT OUTER JOIN MedLists AS ml
-							ON t.ActionTypeMId = ml.MedListsId
+					INNER JOIN TransactionDistributions AS td 
+						ON temp.PatientVisitProcsId = td.PatientVisitProcsId
+					INNER JOIN Transactions AS t 
+						ON t.TransactionsId = td.TransactionsId
+					INNER JOIN VisitTransactions AS vt 
+						ON t.VisitTransactionsId = vt.VisitTransactionsId
+					INNER JOIN PaymentMethod AS pm 
+						ON vt.PaymentMethodId = pm.PaymentMethodId
+					INNER JOIN Batch AS b 
+						ON b.BatchId = temp.BatchId
+					LEFT OUTER JOIN MedLists AS ml
+						ON t.ActionTypeMId = ml.MedListsId
 
 
 					WHERE (pm.DateOfEntry < DATEADD(d, 1, @CurrentClosingDate))
@@ -244,7 +249,7 @@ WITH Resources AS
 		, tmp.PatientVisitProcsId
 		, pvp.CPTCode	
 	)
-
+	
 
 
 
@@ -257,31 +262,41 @@ SELECT
 	, CAST(pvp.DateOfServiceFrom AS DATE) AS DateOfService
 	, [Month of Service] = SUBSTRING(CONVERT(VARCHAR, pvp.DateOfServiceFrom, 120), 1, 7)
 	, d.ListName AS DoctorName
-	, ISNULL(r.ResourceName,'None') AS Resource
+	, [Resource] = (CASE 
+			WHEN (ISNULL(r.ResourceName,'None') = 'None' AND (d.ListName = 'PLB, Provider')) THEN 'PLB, Provider'
+			WHEN (ISNULL(r.ResourceName,'None') = 'None' AND ((pvpa.InsAllocation + pvpa.PatAllocation) = 0)) THEN 'None'
+			ELSE ISNULL(r.ResourceName,'None/Error')
+			END)
 	, r.DotId As ProviderInitials
-	, ISNULL(r.ResourceType,'None') AS ResourceType
+	, [ResourceType] = (CASE
+			WHEN (ISNULL(r.ResourceType,'None') = 'None' AND (d.ListName = 'PLB, Provider')) THEN 'PLB'
+			WHEN (ISNULL(r.ResourceType,'None') = 'None' AND ((pvpa.InsAllocation + pvpa.PatAllocation) = 0)) THEN 'Other/Non-Billable'
+			ELSE ISNULL(r.ResourceType,'None/Error')
+			END)
 	, f.ListName AS FacilityName
-	, [Service Type] = (CASE WHEN ISNULL(r.ResourceType,'None') = 'BHC' THEN 'BHC'
+	, [Service Type] = (CASE 
+			WHEN ISNULL(r.ResourceType,'None') = 'BHC' THEN 'BHC'
 			WHEN ISNULL(r.ResourceType,'None') = 'Doctors' THEN 'Medical'
+--			WHEN (ISNULL(r.ResourceType,'None') = 'None') AND (d.ListName = 'PLB, Provider') THEN 'Medical'
 			WHEN ISNULL(r.ResourceType,'None') IN ('Dentists', 'Hygienists') THEN 'Dental'
-			ELSE 'Other'
+			WHEN (ISNULL(r.ResourceType,'None') = 'None' AND ((pvpa.InsAllocation + pvpa.PatAllocation) = 0)) THEN 'Other/Non-Billable'
+			ELSE 'Other/Error'
 			END)
 	, ISNULL(pt.Description,  'Unknown') AS PolicyType 
 	, ISNULL(ic.ListName,'Self Pay') AS PrimaryInsuranceCarrier 
-	, [Broad Payer Type] =
-		(
-		CASE 
-		WHEN ic.PolicyTypeMId IN (2495, 114348) THEN 'Medicaid/PPS' 
-		WHEN ic.PolicyTypeMId IN (2500, 2501) THEN 'Self Pay/Sliding Fee' 
-		WHEN ic.PolicyTypeMId IN (2497, 114349, 146) THEN 'Medicare' 
-		ELSE 'Private/Other' 
-		END
-		)
-	, [PPS Rate] = (CASE WHEN pvp.DateOfServiceFrom <= @PPSrateDate2015 THEN @PPSrateFY2015
+	, [Broad Payer Type] = (CASE 
+			WHEN ic.PolicyTypeMId IN (2495, 114348) THEN 'Medicaid/PPS' 
+			WHEN ic.PolicyTypeMId IN (2500, 2501) THEN 'Self Pay/Sliding Fee' 
+			WHEN ic.PolicyTypeMId IN (2497, 114349, 146) THEN 'Medicare' 
+			ELSE 'Private/Other' 
+			END)
+	, [PPS Rate] = (CASE 
+			WHEN pvp.DateOfServiceFrom <= @PPSrateDate2015 THEN @PPSrateFY2015
 			WHEN pvp.DateOfServiceFrom >= @PPSrateDate2015 AND pvp.DateOfServiceFrom < @PPSrateDate2016 THEN @PPSrateFY2016
 			WHEN pvp.DateOfServiceFrom >= @PPSrateDate2016 AND pvp.DateOfServiceFrom < @PPSrateDate2017 THEN @PPSrateFY2017
 			WHEN pvp.DateOfServiceFrom >= @PPSrateDate2017 AND pvp.DateOfServiceFrom < @PPSrateDate2018 THEN @PPSrateFY2018
-			WHEN pvp.DateOfServiceFrom >= @PPSrateDate2018 THEN NULL END)
+			WHEN pvp.DateOfServiceFrom >= @PPSrateDate2018 THEN NULL 
+			END)
 	, pvp.CPTCode
 	, [Charges] = (pvpa.InsAllocation + pvpa.PatAllocation)
 	, Adjustments = (pvpa.InsAdjustment + pvpa.PatAdjustment)
@@ -289,18 +304,18 @@ SELECT
 	, CAST(pv.FirstFiledDate AS DATE) AS FirstFiledDate
 	, CAST(pvp.DateOfEntry AS DATE) AS DateofEntry
 --	, [Days to Charge Entry] = ISNULL(CONVERT(VARCHAR(25), DATEDIFF(day, pvp.DateOfServiceFrom, pm.DateOfEntry)), 'Charge Not Retrieved') -- I should build in some logic to check which date is actually NULL
-	, [Days to Claim Submission] = CAST(ISNULL(CONVERT(VARCHAR(25), DATEDIFF(day, pvp.DateOfServiceFrom, pv.FirstFiledDate)), NULL) AS INT) -- Here too
-		, PaymentsToDate = c.Payments
-		, CollectableAdjustmentsToDate = c.CollectableAdjustments
-		, NonCollectableAdjustmentsToDate = c.NonCollectableAdjustments
-		, AdjustmentsDiff = ((pvpa.InsAdjustment + pvpa.PatAdjustment)-(c.CollectableAdjustments + c.NonCollectableAdjustments))
-		, AbsAdjustmentsDiff = ABS((pvpa.InsAdjustment + pvpa.PatAdjustment)-(c.CollectableAdjustments + c.NonCollectableAdjustments))
-		, ReportDate = CURRENT_TIMESTAMP
+--	, [Days to Claim Submission] = CAST(ISNULL(CONVERT(VARCHAR(25), DATEDIFF(day, pvp.DateOfServiceFrom, pv.FirstFiledDate)), NULL) AS INT) -- Here too
+	, PaymentsToDate = c.Payments
+	, CollectableAdjustmentsToDate = ISNULL(c.CollectableAdjustments,0)
+	, NonCollectableAdjustmentsToDate = ISNULL(c.NonCollectableAdjustments,0)
+	, SumAdjToDate = (c.CollectableAdjustments + c.NonCollectableAdjustments)
+	, AdjustmentsDiff = ((pvpa.InsAdjustment + pvpa.PatAdjustment)-(c.CollectableAdjustments + c.NonCollectableAdjustments))
+	, AbsAdjustmentsDiff = ABS((pvpa.InsAdjustment + pvpa.PatAdjustment)-(c.CollectableAdjustments + c.NonCollectableAdjustments))
+	, ReportDate = CURRENT_TIMESTAMP
 	
 FROM PatientVisit pv
 	LEFT JOIN Resources r ON pv.PatientVisitID = r.PatientVisitId
 	LEFT JOIN PatientVisitResource pvr ON r.PatientVisitID = pvr.PatientVisitID
-
 	JOIN PatientVisitProcs pvp ON pv.PatientVisitId = pvp.PatientVisitId
 	JOIN PatientVisitProcsAgg pvpa ON pv.PatientVisitId = pvpa.PatientVisitId AND pvp.PatientVisitProcsId = pvpa.PatientVisitProcsId
 	JOIN DoctorFacility d ON pv.DoctorId = d.DoctorFacilityId
@@ -329,6 +344,15 @@ WHERE /*(c.CollectableAdjustments + c.NonCollectableAdjustments) - (pvpa.InsAdju
 	  ((@DateType = 'DOS') AND(pvp.DateOfServiceFrom  >= ISNULL(@StartDate,'1/1/1900'))
 		AND (pvp.DateOfServiceFrom < dateadd(day, 1, ISNULL(@EndDate,'1/1/3000'))))
 	)
+	--AND
+	--(
+	--(CASE WHEN ISNULL(r.ResourceType,'None') = 'BHC' THEN 'BHC'
+	--	WHEN ISNULL(r.ResourceType,'None') = 'Doctors' THEN 'Medical'
+	--	WHEN ISNULL(r.ResourceType,'None') IN ('Dentists', 'Hygienists') THEN 'Dental'
+	--	ELSE 'Other'
+	--	END) != 'Other'
+	--)
+	--AND pvp.CPTCode LIKE 'PLB'
 	
 ORDER BY pvp.DateOfServiceFrom
 		, pv.PatientVisitId
