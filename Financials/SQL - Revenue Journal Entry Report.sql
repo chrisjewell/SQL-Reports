@@ -158,7 +158,7 @@ WITH Resources AS
 					, NonCollectableInsuranceAdjustment = SUM(
 						CASE 
 						WHEN t.Action = 'A' AND pm.Source = 2 AND ISNULL(ml.FunctionName,'Y') = 'N'  THEN td.Amount
---						WHEN (t.Action = 'A' AND pm.Source = 2 AND ISNULL(ml.FunctionName,'Y') = 'N' AND temp.Code = 'PLB') THEN  t.Amount -- Makes PLB adjustment amounts NonCollectableInsuranceAdjustments
+						WHEN (t.Action = 'A' AND pm.Source = 2 AND ISNULL(ml.FunctionName,'Y') = 'N' AND temp.Code = 'PLB') THEN  t.Amount -- Makes PLB adjustment amounts NonCollectableInsuranceAdjustments
 						ELSE 0 
 						END)
 					, CollectablePatientAdjustment = SUM(
