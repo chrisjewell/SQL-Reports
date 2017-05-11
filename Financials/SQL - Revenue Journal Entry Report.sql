@@ -302,9 +302,15 @@ SELECT
 	, CAST(pvp.DateOfEntry AS DATE) AS DateofEntry
 --	, [Days to Charge Entry] = ISNULL(CONVERT(VARCHAR(25), DATEDIFF(day, pvp.DateOfServiceFrom, pm.DateOfEntry)), 'Charge Not Retrieved') -- I should build in some logic to check which date is actually NULL
 --	, [Days to Claim Submission] = CAST(ISNULL(CONVERT(VARCHAR(25), DATEDIFF(day, pvp.DateOfServiceFrom, pv.FirstFiledDate)), NULL) AS INT) -- Here too
-	, PaymentsToDate = c.Payments
+	, [PaymentsToDate] = (CASE
+			WHEN pvp.Code = 'PLB' THEN (-(pvpa.InsAdjustment + pvpa.PatAdjustment))
+ 			ELSE c.Payments
+			END)
 	, CollectableAdjustmentsToDate = ISNULL(c.CollectableAdjustments,0)
-	, NonCollectableAdjustmentsToDate = ISNULL(c.NonCollectableAdjustments,0)
+	, [NonCollectableAdjustmentsToDate] = (CASE
+			WHEN pvp.Code = 'PLB' THEN (pvpa.InsAdjustment + pvpa.PatAdjustment)
+ 			ELSE ISNULL(c.NonCollectableAdjustments,0)
+			END)	
 	, SumAdjToDate = (c.CollectableAdjustments + c.NonCollectableAdjustments)
 	, AdjustmentsDiff = ((pvpa.InsAdjustment + pvpa.PatAdjustment)-(c.CollectableAdjustments + c.NonCollectableAdjustments))
 	, AbsAdjustmentsDiff = ABS((pvpa.InsAdjustment + pvpa.PatAdjustment)-(c.CollectableAdjustments + c.NonCollectableAdjustments))
