@@ -158,7 +158,7 @@ WITH Resources AS
 					, NonCollectableInsuranceAdjustment = SUM(
 						CASE 
 						WHEN t.Action = 'A' AND pm.Source = 2 AND ISNULL(ml.FunctionName,'Y') = 'N'  THEN td.Amount
-						WHEN t.Action = 'A' AND pvp.Code = 'PLB' THEN  t.Amount -- Makes PLB adjustment amounts NonCollectableInsuranceAdjustments -- (pm.Source = 2 AND ISNULL(ml.FunctionName,'Y') = 'N' AND 
+						WHEN (t.Action = 'A' AND pm.Source = 2 AND ISNULL(ml.FunctionName,'Y') = 'N' AND temp.Code = 'PLB') THEN  t.Amount -- Makes PLB adjustment amounts NonCollectableInsuranceAdjustments
 						ELSE 0 
 						END)
 					, CollectablePatientAdjustment = SUM(
@@ -177,7 +177,7 @@ WITH Resources AS
 								, pvpa.InsAllocation AS InsuranceCharges
 								, pvpa.PatAllocation AS PatientCharges
 								, pvp.TotalAllowed AS Allowed
-								--, pvp.Code AS Code
+								, pvp.Code AS Code
 
 							FROM     PatientVisitProcs AS pvp 
 								JOIN PatientVisitProcsAgg AS pvpa 
@@ -197,12 +197,10 @@ WITH Resources AS
 
 					INNER JOIN TransactionDistributions AS td 
 						ON temp.PatientVisitProcsId = td.PatientVisitProcsId
-					inner join PatientVisitProcs as pvp
-						on temp.PatientVisitProcsId = pvp.PatientVisitProcsId
-					INNER JOIN VisitTransactions AS vt 
-						ON pvp.PatientVisitId = vt.PatientVisitId
 					INNER JOIN Transactions AS t 
-						ON vt.VisitTransactionsId = t.VisitTransactionsId
+						ON t.TransactionsId = td.TransactionsId
+					INNER JOIN VisitTransactions AS vt 
+						ON t.VisitTransactionsId = vt.VisitTransactionsId
 					INNER JOIN PaymentMethod AS pm 
 						ON vt.PaymentMethodId = pm.PaymentMethodId
 					INNER JOIN Batch AS b 
