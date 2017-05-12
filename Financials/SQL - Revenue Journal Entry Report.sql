@@ -264,7 +264,7 @@ SELECT
 			WHEN (ISNULL(r.ResourceName,'None') = 'None' AND ((pvpa.InsAllocation + pvpa.PatAllocation) = 0)) THEN 'None'
 			ELSE ISNULL(r.ResourceName,'None/Error')
 			END)
-	, r.DotId As ProviderInitials
+--	, r.DotId As ProviderInitials
 	, [ResourceType] = (CASE
 			WHEN (ISNULL(r.ResourceType,'None') = 'None' AND (d.ListName = 'PLB, Provider')) THEN 'PLB'
 			WHEN (ISNULL(r.ResourceType,'None') = 'None' AND ((pvpa.InsAllocation + pvpa.PatAllocation) = 0)) THEN 'Other/Non-Billable'
@@ -287,19 +287,23 @@ SELECT
 			WHEN ic.PolicyTypeMId IN (2497, 114349, 146) THEN 'Medicare' 
 			ELSE 'Private/Other' 
 			END)
-	, [PPS Rate] = (CASE 
-			WHEN pvp.DateOfServiceFrom <= @PPSrateDate2015 THEN @PPSrateFY2015
-			WHEN pvp.DateOfServiceFrom >= @PPSrateDate2015 AND pvp.DateOfServiceFrom < @PPSrateDate2016 THEN @PPSrateFY2016
-			WHEN pvp.DateOfServiceFrom >= @PPSrateDate2016 AND pvp.DateOfServiceFrom < @PPSrateDate2017 THEN @PPSrateFY2017
-			WHEN pvp.DateOfServiceFrom >= @PPSrateDate2017 AND pvp.DateOfServiceFrom < @PPSrateDate2018 THEN @PPSrateFY2018
-			WHEN pvp.DateOfServiceFrom >= @PPSrateDate2018 THEN NULL 
-			END)
+	--, [PPS Rate] = (CASE 
+	--		WHEN pvp.DateOfServiceFrom <= @PPSrateDate2015 THEN @PPSrateFY2015
+	--		WHEN pvp.DateOfServiceFrom >= @PPSrateDate2015 AND pvp.DateOfServiceFrom < @PPSrateDate2016 THEN @PPSrateFY2016
+	--		WHEN pvp.DateOfServiceFrom >= @PPSrateDate2016 AND pvp.DateOfServiceFrom < @PPSrateDate2017 THEN @PPSrateFY2017
+	--		WHEN pvp.DateOfServiceFrom >= @PPSrateDate2017 AND pvp.DateOfServiceFrom < @PPSrateDate2018 THEN @PPSrateFY2018
+	--		WHEN pvp.DateOfServiceFrom >= @PPSrateDate2018 THEN NULL 
+	--		END)
 	, pvp.CPTCode
 	, [Charges] = (pvpa.InsAllocation + pvpa.PatAllocation)
-	, Adjustments = (pvpa.InsAdjustment + pvpa.PatAdjustment)
+	, GrossAdjustments = (pvpa.InsAdjustment + pvpa.PatAdjustment)
+	, AdjToDate = (ISNULL(c.CollectableAdjustments,0) + (CASE
+			WHEN pvp.Code = 'PLB' THEN (pvpa.InsAdjustment + pvpa.PatAdjustment)
+ 			ELSE ISNULL(c.NonCollectableAdjustments,0)
+			END))
 	, [Net Charges] = (pvpa.InsAllocation - pvpa.InsAdjustment) + (pvpa.PatAllocation - pvpa.PatAdjustment)
-	, CAST(pv.FirstFiledDate AS DATE) AS FirstFiledDate
-	, CAST(pvp.DateOfEntry AS DATE) AS DateofEntry
+--	, CAST(pv.FirstFiledDate AS DATE) AS FirstFiledDate
+--	, CAST(pvp.DateOfEntry AS DATE) AS DateofEntry
 --	, [Days to Charge Entry] = ISNULL(CONVERT(VARCHAR(25), DATEDIFF(day, pvp.DateOfServiceFrom, pm.DateOfEntry)), 'Charge Not Retrieved') -- I should build in some logic to check which date is actually NULL
 --	, [Days to Claim Submission] = CAST(ISNULL(CONVERT(VARCHAR(25), DATEDIFF(day, pvp.DateOfServiceFrom, pv.FirstFiledDate)), NULL) AS INT) -- Here too
 	, [PaymentsToDate] = (CASE
@@ -311,9 +315,9 @@ SELECT
 			WHEN pvp.Code = 'PLB' THEN (pvpa.InsAdjustment + pvpa.PatAdjustment)
  			ELSE ISNULL(c.NonCollectableAdjustments,0)
 			END)	
-	, SumAdjToDate = (c.CollectableAdjustments + c.NonCollectableAdjustments)
-	, AdjustmentsDiff = ((pvpa.InsAdjustment + pvpa.PatAdjustment)-(c.CollectableAdjustments + c.NonCollectableAdjustments))
-	, AbsAdjustmentsDiff = ABS((pvpa.InsAdjustment + pvpa.PatAdjustment)-(c.CollectableAdjustments + c.NonCollectableAdjustments))
+	--, SumAdjToDate = (c.CollectableAdjustments + c.NonCollectableAdjustments)
+	--, AdjustmentsDiff = ((pvpa.InsAdjustment + pvpa.PatAdjustment)-(c.CollectableAdjustments + c.NonCollectableAdjustments))
+	--, AbsAdjustmentsDiff = ABS((pvpa.InsAdjustment + pvpa.PatAdjustment)-(c.CollectableAdjustments + c.NonCollectableAdjustments))
 	, ReportDate = CURRENT_TIMESTAMP
 	
 FROM PatientVisit pv
