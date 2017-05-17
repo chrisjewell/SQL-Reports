@@ -17,8 +17,8 @@ DECLARE @StartDate DATETIME
 		, @HCPCType VARCHAR(10)
 		, @ServiceType VARCHAR(15)
 		, @ResourceType VARCHAR(20);
-SELECT @StartDate = '2017-01-01 00:00:00.000';
-SELECT @EndDate = '2017-03-31 23:59:59.997';
+SELECT @StartDate = '2017-04-01 00:00:00.000';
+SELECT @EndDate = '2017-04-30 23:59:59.997';
 SELECT @DateType = 'DOS'; -- 'DOE' or 'DOS'
 SELECT @InclResource = 1; -- 1 includes Resource, 2 does not
 
