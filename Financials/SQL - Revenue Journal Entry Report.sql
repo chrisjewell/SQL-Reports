@@ -301,7 +301,11 @@ SELECT
 			WHEN pvp.Code = 'PLB' THEN (pvpa.InsAdjustment + pvpa.PatAdjustment)
  			ELSE ISNULL(c.NonCollectableAdjustments,0)
 			END))
-	, [Net Charges] = (pvpa.InsAllocation - pvpa.InsAdjustment) + (pvpa.PatAllocation - pvpa.PatAdjustment)
+	, [Net Charges] = (pvpa.InsAllocation + pvpa.PatAllocation) - (CASE
+			WHEN pvp.Code = 'PLB' THEN (pvpa.InsAdjustment + pvpa.PatAdjustment)
+ 			ELSE ISNULL(c.NonCollectableAdjustments,0)
+			END)
+--	, [Net Charges] = (pvpa.InsAllocation - pvpa.InsAdjustment) + (pvpa.PatAllocation - pvpa.PatAdjustment)
 --	, CAST(pv.FirstFiledDate AS DATE) AS FirstFiledDate
 --	, CAST(pvp.DateOfEntry AS DATE) AS DateofEntry
 --	, [Days to Charge Entry] = ISNULL(CONVERT(VARCHAR(25), DATEDIFF(day, pvp.DateOfServiceFrom, pm.DateOfEntry)), 'Charge Not Retrieved') -- I should build in some logic to check which date is actually NULL
