@@ -295,7 +295,7 @@ SELECT
 	--		WHEN pvp.DateOfServiceFrom >= @PPSrateDate2018 THEN NULL 
 	--		END)
 	, pvp.CPTCode
-	, [Charges] = (pvpa.InsAllocation + pvpa.PatAllocation)
+	, [Gross Charges] = (pvpa.InsAllocation + pvpa.PatAllocation)
 	, GrossAdjustments = (pvpa.InsAdjustment + pvpa.PatAdjustment)
 	, AdjToDate = (ISNULL(c.CollectableAdjustments,0) + (CASE
 			WHEN pvp.Code = 'PLB' THEN (pvpa.InsAdjustment + pvpa.PatAdjustment)
